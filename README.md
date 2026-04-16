@@ -1,0 +1,12 @@
+# PostgreSQL
+- Installation and setup
+- Database Fundamentals
+- Relationships
+- Indexing
+- Query writing
+- Query optimization
+- Pagination
+- Transactions
+- Constraints & Data Integrity
+- Advanced Concepts
+- Scaling PostgreSQL
