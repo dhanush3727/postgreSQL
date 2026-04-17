@@ -93,3 +93,30 @@ INSERT INTO orders (product, customer_id)
 VALUES ('Laptop', 2), ('PS5', 1);
 ```
 In this example, we have two tables: `customer` and `orders`. The `customer_id` column in the `orders` table is a foreign key that references the `id` column in the `customer` table. This establishes a relationship between the two tables, allowing us to associate each order with a specific customer.
+
+### Constraints:
+Constraints are rules that are applied to columns in a table to enforce data integrity. Common constraints include:
+- `NOT NULL`: Ensures that a column cannot have a null value. Ex: `name TEXT NOT NULL`.
+- `UNIQUE`: Ensures that all values in a column are unique. Ex: `email TEXT UNIQUE`.
+- `PRIMARY KEY`: A combination of `NOT NULL` and `UNIQUE`. Ex: `id SERIAL PRIMARY KEY`.
+- `FOREIGN KEY`: Ensures that a value in one table matches a value in another table. Ex: `customer_id INT, FOREIGN KEY (customer_id) REFERENCES customer(id)`.
+- `CHECK`: Ensures that all values in a column satisfy a specific condition. Ex: `age INT CHECK (age >= 18)`.
+- `DEFAULT`: Provides a default value for a column when no value is specified. Ex: `created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`.
+- `EXCLUDE`: Ensures that if any two rows are compared on the specified columns or expressions using the specified operators, at least one of these comparisons will return false or null. Ex: `EXCLUDE USING gist (box WITH &&)`.
+
+### Basic SQL commands:
+- `SELECT`: Retrieves data from a database. Ex: `SELECT * FROM test_type;`
+- `INSERT`: Adds new data to a database. Ex: `INSERT INTO test_type (name, age) VALUES ('Alice', 30);`
+- `UPDATE`: Modifies existing data in a database. Ex: `UPDATE test_type SET age = 31 WHERE name = 'Alice';`
+- `DELETE`: Removes data from a database. Ex: `DELETE FROM test_type WHERE name = 'Alice';`
+- `CREATE`: Creates a new database or table. Ex: `CREATE TABLE new_table (id SERIAL PRIMARY KEY, name TEXT);`
+- `ALTER`: Modifies an existing database or table. Ex: `ALTER TABLE test_type ADD COLUMN email TEXT;`
+- `DROP`: Deletes a database or table. Ex: `DROP TABLE new_table;` 
+- `TRUNCATE`: Removes all rows from a table without logging individual row deletions. Ex: `TRUNCATE TABLE test_type;`
+- `GRANT`: Gives specific privileges to users. Ex: `GRANT SELECT ON test_type TO user_name;`
+- `REVOKE`: Removes specific privileges from users. Ex: `REVOKE SELECT ON test_type FROM user_name;`
+- `COMMIT`: Saves all changes made in the current transaction. Ex: `COMMIT;`
+- `ROLLBACK`: Undoes all changes made in the current transaction. Ex: `ROLLBACK;`
+- `SAVEPOINT`: Sets a savepoint within a transaction to which you can later roll back. Ex: `SAVEPOINT savepoint_name;`
+- `EXPLAIN`: Provides information about how PostgreSQL executes a query. Ex: `EXPLAIN SELECT * FROM test_type;`
+- `EXPLAIN ANALYZE`: Executes a query and provides detailed information about the execution plan and performance. Ex: `EXPLAIN ANALYZE SELECT * FROM test_type;`.

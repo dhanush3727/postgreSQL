@@ -1,3 +1,4 @@
+-- Data Type
 CREATE TABLE test_type (
 id SERIAL PRIMARY KEY,
 name TEXT,
@@ -14,6 +15,7 @@ VALUES ('Charu', 22, true, '{"role" : "Tester"}'),
 ('Hari', 21, true, '{"role" : "Devops Engineer"}'),
 ('Jacob', 25, false, '{"role" : "Scammer"}');
 
+-- Primary and Foreign key
 CREATE TABLE customer (
 id SERIAL PRIMARY KEY,
 name TEXT
@@ -37,6 +39,15 @@ VALUES ('Tablet', 3);
 
 DELETE FROM customer WHERE id = 1;
 
+-- Constraints
+CREATE TABLE users (
+id SERIAL PRIMARY KEY,
+name TEXT NOT NULL,
+email TEXT UNIQUE NOT NULL,
+age INT CHECK(age >=18)
+);
+
 SELECT * FROM test_type;
 SELECT * FROM customer;
 SELECT * FROM orders;
+SELECT * FROM users;
