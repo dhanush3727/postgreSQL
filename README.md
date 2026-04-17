@@ -63,3 +63,33 @@ In this example, we create a table named `test_type` with various data types.
 - is_active: A boolean field to indicate if the record is active.
 - created_at: A timestamp field that defaults to the current timestamp when a new record is inserted.
 - data: A JSONB field to store JSON data. JSONB is a binary format for JSON data that allows for efficient storage and querying.
+
+### Tables, columns, and rows:
+- A table is a collection of related data organized in rows and columns. Each table has a unique name and consists of multiple columns, each with a specific data type. Ex: In our previous table creation example, `test_type` is the table.
+- A column is a vertical entity in a table that contains all information associated with a specific field. Each column has a name and a data type. Ex: In our previous table creation example, `name`, `age`, `is_active`, `created_at`, and `data` are columns.
+- A row is a horizontal entity in a table that contains a single record of data. Each row consists of values for each column in the table. Ex: In our previous table creation example, the inserted record with name 'Dhanush', age 22, is_active true, created_at as current timestamp, and data as '{"role" : "Developer"}' is a row in the `test_type` table.
+
+### Primary keys and foreign keys:
+- A primary key is a column or a set of columns that uniquely identifies each row in a table. It must contain unique values and cannot be null. Ex: In our previous table creation example, `id` is the primary key for the `test_type` table.
+- A foreign key is a column or a set of columns in one table that refers to the primary key in another table. It establishes a relationship between the two tables.
+Ex:
+```sql
+CREATE TABLE customer (
+id SERIAL PRIMARY KEY,
+name TEXT
+);
+
+CREATE TABLE orders (
+id SERIAL PRIMARY KEY,
+product TEXT,
+customer_id INT,
+FOREIGN KEY (customer_id) REFERENCES customer(id) 
+);
+
+INSERT INTO customer (name)
+VALUES ('Dhanush'), ('Charu');
+
+INSERT INTO orders (product, customer_id)
+VALUES ('Laptop', 2), ('PS5', 1);
+```
+In this example, we have two tables: `customer` and `orders`. The `customer_id` column in the `orders` table is a foreign key that references the `id` column in the `customer` table. This establishes a relationship between the two tables, allowing us to associate each order with a specific customer.

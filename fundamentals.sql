@@ -14,4 +14,29 @@ VALUES ('Charu', 22, true, '{"role" : "Tester"}'),
 ('Hari', 21, true, '{"role" : "Devops Engineer"}'),
 ('Jacob', 25, false, '{"role" : "Scammer"}');
 
-SELECT * from test_type;
+CREATE TABLE customer (
+id SERIAL PRIMARY KEY,
+name TEXT
+);
+
+CREATE TABLE orders (
+id SERIAL PRIMARY KEY,
+product TEXT,
+customer_id INT,
+FOREIGN KEY (customer_id) REFERENCES customer(id) 
+);
+
+INSERT INTO customer (name)
+VALUES ('Dhanush'), ('Charu');
+
+INSERT INTO orders (product, customer_id)
+VALUES ('Laptop', 2), ('PS5', 1);
+
+INSERT INTO orders (product, customer_id)
+VALUES ('Tablet', 3);
+
+DELETE FROM customer WHERE id = 1;
+
+SELECT * FROM test_type;
+SELECT * FROM customer;
+SELECT * FROM orders;
