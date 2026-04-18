@@ -142,3 +142,124 @@ A relationship in postgreSQL means how tables in connected to another table usin
 - One-to-many: One record in table A is associated with multiple records in table B. Ex: A `customer` table and an `orders` table where each customer can have multiple orders.
 - Many-to-many: Multiple records in table A are associated with multiple records in table B. Ex: A `students` table and a `courses` table where each student can enroll in multiple courses and each course can have multiple students.
 
+### one-to-one relationship:
+```sql
+CREATE TABLE users (
+id SERIAL PRIMARY KEY,
+username TEXT UNIQUE,
+email TEXT UNIQUE
+);
+
+CREATE TABLE profiles (
+id SERIAL PRIMARY KEY,
+user_id INT UNIQUE,
+bio TEXT,
+FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+INSERT INTO users (username, email)
+VALUES ('Dhanush', 'dhanu@example.com');
+
+INSERT INTO profiles (bio, user_id)
+VALUES ('Developer', 1);
+```
+Output:
+```
+id | username | email
+---+----------+-------------------
+1  | Dhanush  | dhanu@example.com
+2  | Charu    | charu@example.com
+
+id | user_id | bio
+---+---------+-----
+1  | 1       | Developer
+2  | 2       | Designer
+
+```
+In this example, we have a one-to-one relationship between the `users` table and the `profiles` table. Each user has one profile, and each profile is associated with one user through the `user_id` foreign key.
+
+### one-to-many relationship:
+```sql
+CREATE TABLE customers (
+id SERIAL PRIMARY KEY,
+name TEXT
+);
+
+CREATE TABLE orders (
+id SERIAL PRIMARY KEY,
+product TEXT,
+customer_id INT,
+FOREIGN KEY (customer_id) REFERENCES customers(id)
+);
+
+INSERT INTO customers (name)
+VALUES ('Dhanush'), ('Charu');
+
+INSERT INTO orders (product, customer_id)
+VALUES ('Laptop', 2), ('PS5', 1), ('Smartphone', 2), ('Tablet', 1), ('Headphones', 2);
+```
+Output:
+```
+id | name
+---+------
+1  | Dhanush
+2  | Charu
+
+id | product | customer_id
+---+---------+-------------
+1  | Laptop  | 2
+2  | PS5     | 1
+3  | Smartphone | 2
+4  | Tablet   | 1
+5  | Headphones | 2
+```
+In this example, we have a one-to-many relationship between the `customers` table and the `orders` table. Each customer can have multiple orders, and each order is associated with one customer through the `customer_id` foreign key.
+
+### many-to-many relationship:
+Many-to-many is always implemented using a third table called, the table is called junction, bridge, or mapping table.
+```sql
+CREATE TABLE students (
+id SERIAL PRIMARY KEY,
+name TEXT
+);
+
+CREATE TABLE courses (
+id SERIAL PRIMARY KEY,
+title TEXT
+);
+
+CREATE TABLE enrollments (
+student_id INT,
+course_id INT,
+FOREIGN KEY (student_id) REFERENCES students(id),
+FOREIGN KEY (course_id) REFERENCES courses(id),
+);
+
+INSERT INTO students (name)
+VALUES ('Dhanush'), ('Charu');
+
+INSERT INTO courses (title)
+VALUES ('Mathematics'), ('Computer Science');
+
+INSERT INTO enrollments (student_id, course_id)
+VALUES (1, 1), (1, 2), (2, 1);
+```
+Output:
+```
+id | name
+---+------
+1  | Dhanush
+2  | Charu
+
+id | title
+---+-------------------
+1  | Mathematics
+2  | Computer Science
+
+student_id | course_id
+-----------+----------
+1          | 1
+1          | 2 
+2          | 1
+``` 
+In this example, we have a many-to-many relationship between the `students` table and the `courses` table. Each student can enroll in multiple courses, and each course can have multiple students. The `enrollments` table serves as a junction table that connects the two tables through foreign keys.
