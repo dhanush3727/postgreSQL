@@ -120,3 +120,25 @@ Constraints are rules that are applied to columns in a table to enforce data int
 - `SAVEPOINT`: Sets a savepoint within a transaction to which you can later roll back. Ex: `SAVEPOINT savepoint_name;`
 - `EXPLAIN`: Provides information about how PostgreSQL executes a query. Ex: `EXPLAIN SELECT * FROM test_type;`
 - `EXPLAIN ANALYZE`: Executes a query and provides detailed information about the execution plan and performance. Ex: `EXPLAIN ANALYZE SELECT * FROM test_type;`.
+
+### Schema and namespaces:
+A schema is a logical container for database objects such as tables, views, and functions. It helps to organize and manage database objects. A namespace is a collection of schemas that allows you to group related schemas together. In PostgreSQL, the default schema is called `public`. You can create additional schemas to further organize your database objects.
+Ex:
+```sql
+CREATE SCHEMA sales;
+CREATE TABLE sales.orders (
+id SERIAL PRIMARY KEY,
+product TEXT,
+quantity INT
+);
+```
+In this example, we create a new schema called `sales` and a table called `orders` within that schema. To access the `orders` table, you would need to specify the schema name as well, like this: `SELECT * FROM sales.orders;`.
+
+## Relationship
+A relationship in postgreSQL means how tables in connected to another table using keys. Ex: In the previous example, we have two tables: `customer` and `orders`. The `customer_id` column in the `orders` table is a foreign key that references the `id` column in the `customer` table. This establishes a relationship between the two tables, allowing us to associate each order with a specific customer.
+
+### Types of relationships:
+- One-to-one: One record in table A is associated with one record in table B. Ex: A `user` table and a `profile` table where each user has one profile.
+- One-to-many: One record in table A is associated with multiple records in table B. Ex: A `customer` table and an `orders` table where each customer can have multiple orders.
+- Many-to-many: Multiple records in table A are associated with multiple records in table B. Ex: A `students` table and a `courses` table where each student can enroll in multiple courses and each course can have multiple students.
+
