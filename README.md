@@ -419,3 +419,71 @@ SELECT c.name, o.product FROM customer c
 JOIN orders o USING (customer_id);
 ```
 In this example, the `USING` clause specifies that the join should be performed based on the `customer_id` column, which is present in both the `customer` and `orders` tables. This allows us to retrieve the names of customers along with their ordered products without needing to specify the join condition explicitly.
+
+### Group By and Aggregation:
+The `GROUP BY` clause is used to group rows that have the same values in specified columns into summary rows. It is often used in conjunction with aggregate functions to perform calculations on each group of data. Common aggregate functions include `COUNT()`, `SUM()`, `AVG()`, `MIN()`, and `MAX()`. Ex:
+```sql
+SELECT customer_id, COUNT(*) AS total_orders
+FROM orders
+GROUP BY customer_id;
+HavING COUNT(*) > 1;
+```
+In this example, we are counting the total number of orders for each customer by grouping the results based on the `customer_id` column. The `COUNT(*)` function counts the number of rows in each group, and the result is returned as `total_orders`. The `HAVING` clause is used to filter the groups based on the aggregate function result. In this case, we are only interested in customers who have more than one order, so we use `HAVING COUNT(*) > 1` to filter the results accordingly.
+Some other aggregate functions include:
+- `SUM()`: Calculates the total sum of a numeric column.
+- `AVG()`: Calculates the average value of a numeric column.
+- `MIN()`: Finds the minimum value in a column.
+- `MAX()`: Finds the maximum value in a column.
+- `COUNT()`: Counts the number of rows in a group.
+- `ARRAY_AGG()`: Aggregates values into an array.
+- `STRING_AGG()`: Concatenates values into a single string with a specified separator.
+- `JSON_AGG()`: Aggregates values into a JSON array.
+- `JSONB_AGG()`: Aggregates values into a JSONB array.
+- `BOOL_AND()`: Returns true if all input values are true, otherwise returns false.
+- `BOOL_OR()`: Returns true if at least one input value is true, otherwise returns false.
+- `VARIANCE()`: Calculates the variance of a numeric column.    
+- `STDDEV()`: Calculates the standard deviation of a numeric column.
+
+Group By + Join:
+```sql
+SELECT c.name, COUNT(o.id) AS total_orders
+FROM customer c
+JOIN orders o ON c.id = o.customer_id
+GROUP BY c.name;
+```
+In this example, we are joining the `customer` and `orders` tables to count the total number of orders for each customer. We group the results by the customer's name using the `GROUP BY` clause, and we use the `COUNT(o.id)` function to count the number of orders for each customer. The result is returned as `total_orders` alongside the customer's name.
+
+### Order By
+The `ORDER BY` clause is used to sort the result set of a query based on one or more columns. By default, the sorting is done in ascending order, but you can specify descending order using the `DESC` keyword. Ex:
+```sql
+-- Order By
+SELECT * FROM 
+orders
+ORDER BY product ASC;
+
+SELECT * FROM orders
+ORDER BY customer_id ASC, product DESC;
+
+-- Order by with join
+SELECT c.name, o.product
+FROM customer c
+JOIN orders o ON c.id = o.customer_id
+ORDER BY c.name ASC;
+
+-- Order by with group by
+SELECT customer_id, COUNT(*) AS total
+FROM orders
+GROUP BY customer_id
+ORDER BY customer_id ASC;
+```
+In this example, we demonstrate the use of the `ORDER BY` clause in different contexts. The first query sorts the `orders` table by the `product` column in ascending order. The second query sorts the `orders` table first by `customer_id` in ascending order and then by `product` in descending order. The third query joins the `customer` and `orders` tables and sorts the results by the customer's name in ascending order. The fourth query groups the orders by `customer_id`, counts the total number of orders for each customer, and sorts the results by `customer_id` in ascending order.
+
+### Limit and Offset
+The `LIMIT` clause is used to specify the maximum number of rows to return in the result set, while the `OFFSET` clause is used to specify the number of rows to skip before starting to return rows. These clauses are often used together for pagination purposes. Ex:
+```sql
+SELECT * FROM orders
+ORDER BY id ASC
+LIMIT 10 OFFSET 20;
+```
+In this example, we are retrieving rows from the `orders` table, sorting them by the `id` column in ascending order. The `LIMIT 10` clause specifies that we want to return a maximum of 10 rows, while the `OFFSET 20` clause indicates that we want to skip the first 20 rows before starting to return results. This is useful for implementing pagination, allowing us to retrieve a specific subset of results from a larger dataset.
+
