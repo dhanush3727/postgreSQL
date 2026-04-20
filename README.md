@@ -135,7 +135,8 @@ quantity INT
 In this example, we create a new schema called `sales` and a table called `orders` within that schema. To access the `orders` table, you would need to specify the schema name as well, like this: `SELECT * FROM sales.orders;`.
 
 ## Relationship
-A relationship in postgreSQL means how tables in connected to another table using keys. Ex: In the previous example, we have two tables: `customer` and `orders`. The `customer_id` column in the `orders` table is a foreign key that references the `id` column in the `customer` table. This establishes a relationship between the two tables, allowing us to associate each order with a specific customer.
+### Introduction to relationships:
+A relationship in PostgreSQL means how tables are connected to another table using keys. Ex: In the previous example, we have two tables: `customer` and `orders`. The `customer_id` column in the `orders` table is a foreign key that references the `id` column in the `customer` table. This establishes a relationship between the two tables, allowing us to associate each order with a specific customer.
 
 ### Types of relationships:
 - One-to-one: One record in table A is associated with one record in table B. Ex: A `user` table and a `profile` table where each user has one profile.
@@ -216,7 +217,7 @@ id | product | customer_id
 In this example, we have a one-to-many relationship between the `customers` table and the `orders` table. Each customer can have multiple orders, and each order is associated with one customer through the `customer_id` foreign key.
 
 ### many-to-many relationship:
-Many-to-many is always implemented using a third table called, the table is called junction, bridge, or mapping table.
+Many-to-many is always implemented using a third table, the table is called junction, bridge, or mapping table.
 ```sql
 CREATE TABLE students (
 id SERIAL PRIMARY KEY,
@@ -263,3 +264,158 @@ student_id | course_id
 2          | 1
 ``` 
 In this example, we have a many-to-many relationship between the `students` table and the `courses` table. Each student can enroll in multiple courses, and each course can have multiple students. The `enrollments` table serves as a junction table that connects the two tables through foreign keys.
+
+
+## Indexing
+### Introduction to indexing:
+Indexing is a technique used to improve the performance of database queries by allowing the database to quickly locate and retrieve data. An index is a data structure that stores a mapping of the values in a column to their corresponding row locations in the table. When a query is executed, the database can use the index to quickly find the relevant rows without having to scan the entire table.
+Ex:
+```sql
+CREATE TABLE indexed_user (
+id SERIAL PRIMARY KEY,
+name TEXT,
+email TEXT
+);
+
+-- Insert Large data
+INSERT INTO indexed_user (name, email)
+SELECT 
+'user_' || i,
+'user_' || i || '@gmail.com'
+FROM generate_series(1, 50000) AS i;
+
+-- Create index on the email column
+CREATE INDEX idx_user_email ON indexed_user(email);
+
+-- Query using the index
+EXPLAIN ANALYZE
+SELECT * FROM indexed_user WHERE email = 'user_1000@gmail.com';
+```
+Output:
+```
+Index Scan using idx_user_email on indexed_user  (cost=0.29..8.31 rows=1 width=36) (actual time=0.012..0.013 rows=1 loops=1)
+  Index Cond: (email = 'user_1000@gmail.com')
+Planning Time: 0.123 ms
+Execution Time: 0.025 ms
+```
+In this example, we create a table called `indexed_user` and insert a large number of records. We then create an index on the `email` column. When we execute a query that filters by the `email` column, the database uses the index to quickly locate the relevant row, resulting in significantly improved query performance compared to a full table scan. The `EXPLAIN ANALYZE` command shows that the query uses an index scan, which is much faster than scanning the entire table.
+
+### Types of indexes:
+- B-tree Index: The default index type in PostgreSQL, suitable for most use cases. It is efficient for equality and range queries.
+- Hash Index: Used for equality comparisons, but not suitable for range queries. It is generally not recommended due to limitations and performance issues.
+- GIN (Generalized Inverted Index): Used for indexing composite types, arrays, and full-text search. It allows for efficient querying of complex data types.
+- GiST (Generalized Search Tree): Used for indexing geometric data types and full-text search. It supports a wide range of data types and allows for custom indexing strategies.
+- SP-GiST (Space-Partitioned Generalized Search Tree): Used for indexing spatial data and other data types that can be partitioned in space. It is designed for high-dimensional data and allows for efficient querying of spatial relationships.
+- BRIN (Block Range INdexes): Used for indexing large tables where the data is naturally ordered. It is efficient for queries that filter on a range of values, such as date ranges or numeric ranges.
+- Expression Index: An index that is created on the result of an expression rather than a column. It allows for indexing computed values or specific transformations of data.
+- Partial Index: An index that is created on a subset of the rows in a table, based on a specified condition. It can improve query performance by indexing only the relevant rows for certain queries.
+- Multicolumn Index: An index that is created on multiple columns of a table. It can improve query performance for queries that filter on multiple columns, but it may not be as efficient as separate indexes on each column for certain types of queries.
+
+### Indexing strategies:
+- Choose the right index type based on the data and query patterns. For example, use a B-tree index for general-purpose indexing and a GIN index for full-text search.
+- Index columns that are frequently used in WHERE clauses, JOIN conditions, and ORDER BY clauses to improve query performance.
+- Avoid indexing columns that have low cardinality (i.e., columns with few distinct values), as they may not provide significant performance benefits and can increase storage requirements. Ex: Indexing a boolean column may not be effective if it has a high proportion of true or false values.
+- Consider the trade-offs between read and write performance when creating indexes. While indexes can improve read performance, they can also slow down write operations (INSERT, UPDATE, DELETE) because the index needs to be updated whenever the data changes.
+- Regularly monitor and analyze the performance of your indexes using tools like `EXPLAIN ANALYZE` to identify any indexes that are not being used effectively and consider dropping or modifying them as needed.
+- Use partial indexes to index only a subset of the data when appropriate, which can reduce storage requirements and improve query performance for specific queries.
+- Consider the order of columns in multicolumn indexes, as it can affect query performance. For example, if you have a multicolumn index on (column1, column2), it will be more efficient for queries that filter on column1 than for queries that filter on column2 alone.
+- Regularly maintain your indexes by performing operations like `REINDEX` to rebuild indexes and `VACUUM` to clean up dead tuples, which can help improve query performance and reduce storage requirements.
+
+## Query writing
+Query writing is the process of creating SQL statements to interact with a database. It involves using various SQL commands and clauses to retrieve, manipulate, and manage data in a PostgreSQL database. Effective query writing is essential for optimizing performance and ensuring that the database operations are efficient and accurate.
+
+### SELECT + WHERE:
+The `SELECT` statement is used to retrieve data from a database, while the `WHERE` clause is used to filter the results based on specific conditions. Ex:
+```sql
+-- Operators
+SELECT name, age FROM test_type 
+WHERE age = 22;
+
+SELECT name FROM test_type 
+WHERE age < 22;
+
+SELECT name FROM test_type 
+WHERE name = 'Charu' AND age = 22;
+
+SELECT name FROM test_type 
+WHERE name = 'Dhanush' OR name = 'Ramesh';
+
+-- IN(Instead of OR)
+SELECT name, age FROM test_type 
+WHERE name IN ('Dhanush', 'Ramesh');
+
+-- LIKE(Pattern Search)
+SELECT * FROM test_type
+WHERE name LIKE 'D%';
+
+SELECT * FROM test_type
+WHERE name LIKE '%i';
+
+SELECT * FROM test_type
+WHERE name LIKE '%u%';
+
+SELECT * FROM test_type
+WHERE name LIKE '_h%';
+
+-- BETWEEN
+SELECT * FROM test_type
+WHERE age BETWEEN 20 AND 21;
+
+-- NULL handling
+SELECT * FROM test_type
+WHERE age IS NULL;
+```
+In this example
+- We use th comparison operators (`=`, `<`, `>`, `<=`, `>=`, `!=`) to filter results based on specific conditions.
+- We use the `AND` and `OR` logical operators to combine multiple conditions in the `WHERE` clause.
+- We use the `IN` operator to filter results based on a list of values, which is more efficient than using multiple `OR` conditions.
+- We use the `LIKE` operator for pattern matching, allowing us to search for values that match a specific pattern. In this case, `%u%` matches any name that contains the letter 'u'. Others '%' matches any sequence of characters, and `_` matches a single character.
+- We use the `BETWEEN` operator to filter results based on a range of values.
+- We use `IS NULL` to filter results where a column has a null value.
+
+### JOIN:
+A `JOIN` is used to combine rows from two or more tables based on a related column between them. There are several types of joins in PostgreSQL:
+- `INNER JOIN`: Returns only the rows that have matching values in both tables. Ex:
+```sql
+SELECT c.name, o.product FROM customer c
+INNER JOIN orders o ON c.id = o.customer_id;
+```
+- `LEFT JOIN`: Returns all rows from the left table and the matched rows from the right table. If there is no match, the result is NULL on the right side. Ex:
+```sql
+SELECT c.name, o.product FROM customer c
+LEFT JOIN orders o ON c.id = o.customer_id;
+```
+- `RIGHT JOIN`: Returns all rows from the right table and the matched rows from the left table. If there is no match, the result is NULL on the left side. Ex:
+```sql
+SELECT c.name, o.product FROM customer c
+RIGHT JOIN orders o ON c.id = o.customer_id;
+```
+- `FULL OUTER JOIN`: Returns all rows when there is a match in either left or right table. If there is no match, the result is NULL on the side that does not have a match. Ex:
+```sql
+SELECT c.name, o.product FROM customer c
+FULL OUTER JOIN orders o ON c.id = o.customer_id;
+```
+- `CROSS JOIN`: Returns the Cartesian product of the two tables, meaning it returns all possible combinations of rows from both tables. Ex:
+```sql
+SELECT c.name, o.product FROM customer c
+CROSS JOIN orders o;
+```
+- `SELF JOIN`: A self join is a regular join but the table is joined with itself. It is used to compare rows within the same table. Ex:
+```sql
+SELECT a.name AS employee, b.name AS manager
+FROM employees a
+JOIN employees b ON a.manager_id = b.id;
+```
+In this example, we have an `employees` table where each employee has a `manager_id` that references the `id` of another employee. The self join allows us to retrieve the names of employees along with their managers by joining the table with itself.
+- `NATURAL JOIN`: A natural join automatically joins tables based on columns with the same name and compatible data types. It eliminates the need to specify the join condition explicitly. Ex:
+```sql
+SELECT c.name, o.product FROM customer c
+NATURAL JOIN orders o;
+```
+In this example, the `NATURAL JOIN` will automatically join the `customer` and `orders` tables based on the common column `customer_id`, which is present in both tables. It will return the names of customers along with their ordered products without needing to specify the join condition explicitly.
+- `USING`: The `USING` clause is used in a join to specify the column(s) that should be used for the join condition when the column names are the same in both tables. It simplifies the syntax by eliminating the need to qualify the column names with table aliases. Ex:
+```sql
+SELECT c.name, o.product FROM customer c
+JOIN orders o USING (customer_id);
+```
+In this example, the `USING` clause specifies that the join should be performed based on the `customer_id` column, which is present in both the `customer` and `orders` tables. This allows us to retrieve the names of customers along with their ordered products without needing to specify the join condition explicitly.
