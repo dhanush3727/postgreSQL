@@ -312,6 +312,7 @@ In this example, we create a table called `indexed_user` and insert a large numb
 - Regularly maintain your indexes by performing operations like `REINDEX` to rebuild indexes and `VACUUM` to clean up dead tuples, which can help improve query performance and reduce storage requirements.
 
 ## Query writing
+### Query writing overview:
 Query writing is the process of creating SQL statements to interact with a database. It involves using various SQL commands and clauses to retrieve, manipulate, and manage data in a PostgreSQL database. Effective query writing is essential for optimizing performance and ensuring that the database operations are efficient and accurate.
 
 ### SELECT + WHERE:
@@ -568,3 +569,54 @@ Joins can be expensive in terms of performance, especially when dealing with lar
 4. Caching: If the results of a query are not changing frequently, you can cache the results in your application layer to avoid hitting the database for every request. This can reduce the load on the database and improve response times.
 5. Indexing: Ensure that the columns used in join conditions are properly indexed to improve the performance of the join operations. This can help reduce the time taken to execute joins and improve overall query performance.
 
+## Pagination
+### Overview of pagination:
+Pagination is the process of dividing a large result set into smaller, more manageable chunks or pages. This is often done to improve performance and user experience when dealing with large datasets. In PostgreSQL, you can implement pagination using the `LIMIT` and `OFFSET` clauses in your SQL queries. Ex:
+```sql
+SELECT * FROM orders
+LIMIT 10;
+```
+In this example, we are retrieving the first 10 rows from the `orders` table. This is useful for displaying a limited number of results on a page, such as in a web application.
+
+### Offset-based pagination:
+Offset-based pagination uses the `OFFSET` clause to specify the number of rows to skip before starting to return rows. This allows you to retrieve a specific page of results. Ex:
+```sql
+SELECT * FROM orders
+LIMIT 10 OFFSET 20;
+```
+In this example, we are retrieving rows from the `orders` table, sorting them by the `id` column in ascending order. The `LIMIT 10` clause specifies that we want to return a maximum of 10 rows, while the `OFFSET 20` clause indicates that we want to skip the first 20 rows before starting to return results.
+But offset-based pagination can become problems when
+- The dataset is large, Ex: `OFFSET 1000000` wil be very slow because it has to skip a large number of rows before returning the desired results.
+- When there are frequent inserts or deletes in the table, which can cause the offset to return inconsistent results as the underlying data changes between queries.
+
+### Cursor-based pagination:
+Cursor-based pagination uses a cursor to keep track of the last retrieved row and allows you to fetch the next set of results based on that cursor. This can be more efficient than offset-based pagination, especially for large datasets, as it avoids the need to skip a large number of rows. Ex:
+```sql
+-- First request
+SELECT * FROM orders
+ORDER BY id ASC
+LIMIT 10;
+
+-- Subsequent request using the last retrieved id as the cursor
+SELECT * FROM orders
+WHERE id > last_retrieved_id
+ORDER BY id ASC
+LIMIT 10;
+```
+In this example, the first query retrieves the first 10 rows from the `orders` table, ordered by the `id` column in ascending order. The second query retrieves the next set of results by using the last retrieved `id` as a cursor.
+
+## Transactions
+### Overview of transactions:
+A transaction is a sequence of one or more SQL operations that are executed as a single unit of work. Transactions ensure that either all operations within the transaction are completed successfully, or none of them are applied to the database. This is important for maintaining data integrity and consistency, especially in scenarios where multiple operations need to be performed together. In PostgreSQL, you can use the `BEGIN`, `COMMIT`, and `ROLLBACK` commands to manage transactions. Ex:
+```sql
+BEGIN;
+INSERT INTO accounts (name, balance) VALUES ('Alice', 1000);
+INSERT INTO accounts (name, balance) VALUES ('Bob', 500);
+COMMIT;
+
+BEGIN;
+UPDATE accounts SET balance = balance - 100 WHERE name = 'Alice';
+UPDATE accounts SET balance = balance + 100 WHERE name = 'Bob';
+COMMIT;
+```
+In this example, we have two transactions. The first transaction inserts two new accounts into the `accounts` table for Alice and Bob. The second transaction performs a transfer of 100 from Alice's account to Bob's account. By using transactions, we ensure that both operations in each transaction are completed successfully, and if any operation fails, the entire transaction can be rolled back to maintain data integrity.
