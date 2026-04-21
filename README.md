@@ -300,16 +300,6 @@ Execution Time: 0.025 ms
 ```
 In this example, we create a table called `indexed_user` and insert a large number of records. We then create an index on the `email` column. When we execute a query that filters by the `email` column, the database uses the index to quickly locate the relevant row, resulting in significantly improved query performance compared to a full table scan. The `EXPLAIN ANALYZE` command shows that the query uses an index scan, which is much faster than scanning the entire table.
 
-### Types of indexes:
-- B-tree Index: The default index type in PostgreSQL, suitable for most use cases. It is efficient for equality and range queries.
-- Hash Index: Used for equality comparisons, but not suitable for range queries. It is generally not recommended due to limitations and performance issues.
-- GIN (Generalized Inverted Index): Used for indexing composite types, arrays, and full-text search. It allows for efficient querying of complex data types.
-- GiST (Generalized Search Tree): Used for indexing geometric data types and full-text search. It supports a wide range of data types and allows for custom indexing strategies.
-- SP-GiST (Space-Partitioned Generalized Search Tree): Used for indexing spatial data and other data types that can be partitioned in space. It is designed for high-dimensional data and allows for efficient querying of spatial relationships.
-- BRIN (Block Range INdexes): Used for indexing large tables where the data is naturally ordered. It is efficient for queries that filter on a range of values, such as date ranges or numeric ranges.
-- Expression Index: An index that is created on the result of an expression rather than a column. It allows for indexing computed values or specific transformations of data.
-- Partial Index: An index that is created on a subset of the rows in a table, based on a specified condition. It can improve query performance by indexing only the relevant rows for certain queries.
-- Multicolumn Index: An index that is created on multiple columns of a table. It can improve query performance for queries that filter on multiple columns, but it may not be as efficient as separate indexes on each column for certain types of queries.
 
 ### Indexing strategies:
 - Choose the right index type based on the data and query patterns. For example, use a B-tree index for general-purpose indexing and a GIN index for full-text search.
@@ -486,4 +476,95 @@ ORDER BY id ASC
 LIMIT 10 OFFSET 20;
 ```
 In this example, we are retrieving rows from the `orders` table, sorting them by the `id` column in ascending order. The `LIMIT 10` clause specifies that we want to return a maximum of 10 rows, while the `OFFSET 20` clause indicates that we want to skip the first 20 rows before starting to return results. This is useful for implementing pagination, allowing us to retrieve a specific subset of results from a larger dataset.
+
+
+## Query optimization
+### Overview of query optimization:
+Query optimization is the process of improving the performance of database queries by analyzing and modifying the query execution plan. PostgreSQL uses a query planner to determine the most efficient way to execute a query based on factors such as available indexes, data distribution, and statistics. By optimizing queries, you can reduce execution time and improve overall database performance.
+
+### Explain and Explain Analyze:
+The `EXPLAIN` command is used to display the execution plan of a query without actually executing it. It provides information about how PostgreSQL plans to execute the query, including the order of operations, the use of indexes, and the estimated cost of each step. The `EXPLAIN ANALYZE` command executes the query and provides detailed information about the actual execution time and the number of rows processed at each step. Ex:
+```sql
+EXPLAIN SELECT * FROM orders WHERE product = 'Laptop';
+
+EXPLAIN ANALYZE SELECT * FROM orders WHERE product = 'Laptop';
+```
+In this example, the first command `EXPLAIN` will show the execution plan for the query that retrieves orders where the product is 'Laptop'. It will provide information about how PostgreSQL plans to execute the query, such as whether it will use an index or perform a sequential scan. The second command `EXPLAIN ANALYZE` will execute the same query and provide detailed information about the actual execution time and the number of rows processed at each step of the execution plan. This allows you to analyze the performance of the query and identify any potential bottlenecks or areas for optimization.
+
+- Index usage:
+To optimize query performance, it is important to ensure that the appropriate indexes are being used. You can check if an index is being used by looking at the execution plan provided by `EXPLAIN` or `EXPLAIN ANALYZE`. If an index is not being used when it should be, you may need to create an index on the relevant column(s) or modify your query to take advantage of existing indexes. Ex:
+```sql
+CREATE INDEX idx_orders_product ON orders(product);
+EXPLAIN ANALYZE SELECT * FROM orders WHERE product = 'Laptop';
+```
+In this example, we create an index on the `product` column of the `orders` table. After creating the index, we use `EXPLAIN ANALYZE` to execute the query that retrieves orders where the product is 'Laptop'. By analyzing the execution plan, we can confirm that the index is being used, which should result in improved query performance compared to a sequential scan of the entire table.
+
+- Sequential scan vs index scan:
+A sequential scan is when PostgreSQL reads through the entire table to find the relevant rows for a query. This can be inefficient for large tables, especially if there are indexes available that could be used to quickly locate the relevant rows. An index scan, on the other hand, allows PostgreSQL to use an index to quickly find the relevant rows without having to read through the entire table. To optimize query performance, it is generally recommended to use indexes whenever possible, as they can significantly reduce the execution time of queries by avoiding full table scans. Ex:
+```sql
+EXPLAIN ANALYZE SELECT * FROM orders WHERE product = 'Laptop';
+```
+In this example, if there is no index on the `product` column, PostgreSQL will perform a sequential scan of the `orders` table to find rows where the product is 'Laptop'. This can be inefficient, especially if the table is large. However, if we create an index on the `product` column (as shown in the previous example), PostgreSQL will use an index scan to quickly locate the relevant rows, resulting in improved query performance. By analyzing the execution plan with `EXPLAIN ANALYZE`, we can confirm whether a sequential scan or an index scan is being used for the query.
+
+- Final workflow:
+1. Write query
+2. Run EXPLAIN ANALYZE
+3. See:
+   - Seq Scan?
+   - High rows removed?
+4. Add index (only if needed)
+5. Re-check with EXPLAIN ANALYZE
+6. Repeat until satisfied with performance
+
+### Avoid SELECT *:
+`SELECT *` this fetches all columns from the table. At small scale you won't notice anything but at real scale this becomes a performance problem. Always select only the columns you need. Ex:
+```sql
+SELECT name, age FROM test_type WHERE age > 20;
+```
+In this example, instead of using `SELECT *`, we specify the columns we need (`name` and `age`) in the SELECT statement. This allows PostgreSQL to only retrieve the necessary data, which can improve query performance, especially if the table has many columns or if there are large amounts of data. By avoiding `SELECT *`, we reduce the amount of data that needs to be processed and transferred, leading to faster query execution and improved overall performance.
+
+- What actually happens when you run `SELECT *`:
+1. Reads every column
+2. Loads it into memory
+3. Sends all data over network
+4. Your backend process it
+5. Your frontend receives it
+
+### Use Index properly:
+1. When to use index:
+  - Exact match queries (e.g., `WHERE column = value`)
+  - Range queries (e.g., `WHERE column > value`)
+  - Sorting (e.g., `ORDER BY column`)
+  - Join conditions (e.g., `JOIN ON column`)
+
+2. When not to use index:
+  - When the column has low cardinality (few distinct values)
+  - When the table is small (sequential scan may be faster)
+  - When the query does not filter on the indexed column
+  - When the query retrieves a large portion of the table (e.g., `SELECT *` without a `WHERE` clause)
+  - When the query is not performance-critical and the overhead of maintaining the index outweighs the benefits
+  - When the query is write-heavy (e.g., many INSERTs, UPDATEs, DELETEs) and the index would slow down write performance
+  - When the query is not using the indexed column in a way that can take advantage of the index (e.g., using functions on the indexed column without a functional index)
+
+3. Types of indexes:
+  - Single-column index: An index on a single column. Ex: `CREATE INDEX idx_column ON table(column);`
+  - Composite index: An index on multiple columns. Ex: `CREATE INDEX idx_columns ON table(column1, column2);`
+  - Unique index: An index that enforces uniqueness of the indexed column(s). Ex: `CREATE UNIQUE INDEX idx_unique ON table(column);`
+  - Partial index: An index that only includes rows that satisfy a specified condition. Ex: `CREATE INDEX idx_partial ON table(column) WHERE condition;`
+  - Expression index: An index based on an expression rather than a column. Ex: `CREATE INDEX idx_expression ON table((column1 + column2));`
+
+4. Composite index:
+A composite index is an index that includes multiple columns. It can be used to optimize queries that filter on multiple columns. However, the order of the columns in the composite index matters. The index can only be used efficiently if the query filters on the leading column(s) of the index. Ex:
+```sql
+CREATE INDEX idx_composite ON orders(customer_id, product);
+```
+In this example, we create a composite index on the `customer_id` and `product` columns of the `orders` table. This index can be used to optimize queries that filter on both `customer_id` and `product`, or just on `customer_id`. However, if a query only filters on `product` without filtering on `customer_id`, the composite index may not be used efficiently, and a sequential scan may occur instead. Therefore, it is important to consider the query patterns when creating composite indexes to ensure they are effective in improving query performance.
+
+### Reducing Joins:
+Joins can be expensive in terms of performance, especially when dealing with large datasets. To reduce the number of joins in a query, you can consider the following strategies:
+1. Denormalization: This involves duplicating data across tables to avoid the need for joins. While this can improve read performance, it can also lead to data redundancy and potential inconsistencies, so it should be used with caution.
+2. Subqueries: Instead of joining tables, you can use subqueries to retrieve the necessary data. This can sometimes be more efficient than a join, especially if the subquery can be optimized separately.
+3. Materialized views: If you have complex queries that involve multiple joins and are frequently executed, you can create a materialized view that precomputes the results of the query. This can significantly improve performance, as the results are stored and can be quickly retrieved without needing to perform the joins each time.
+4. Caching: If the results of a query are not changing frequently, you can cache the results in your application layer to avoid hitting the database for every request. This can reduce the load on the database and improve response times.
+5. Indexing: Ensure that the columns used in join conditions are properly indexed to improve the performance of the join operations. This can help reduce the time taken to execute joins and improve overall query performance.
 
