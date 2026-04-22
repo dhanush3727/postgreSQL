@@ -6,7 +6,6 @@
 - Query optimization
 - Pagination
 - Transactions
-- Constraints & Data Integrity
 - Advanced Concepts
 - Scaling PostgreSQL
 
@@ -607,16 +606,191 @@ In this example, the first query retrieves the first 10 rows from the `orders` t
 
 ## Transactions
 ### Overview of transactions:
-A transaction is a sequence of one or more SQL operations that are executed as a single unit of work. Transactions ensure that either all operations within the transaction are completed successfully, or none of them are applied to the database. This is important for maintaining data integrity and consistency, especially in scenarios where multiple operations need to be performed together. In PostgreSQL, you can use the `BEGIN`, `COMMIT`, and `ROLLBACK` commands to manage transactions. Ex:
+A transaction is a group of SQL operations treated as one unit of work. Either all operations succeed or none of them happen. Transactions ensure data integrity and consistency in a database. In PostgreSQL, you can use the `BEGIN`, `COMMIT`, and `ROLLBACK` commands to manage transactions. Ex:
 ```sql
 BEGIN;
-INSERT INTO accounts (name, balance) VALUES ('Alice', 1000);
-INSERT INTO accounts (name, balance) VALUES ('Bob', 500);
-COMMIT;
 
-BEGIN;
-UPDATE accounts SET balance = balance - 100 WHERE name = 'Alice';
-UPDATE accounts SET balance = balance + 100 WHERE name = 'Bob';
-COMMIT;
+-- This query insert a new customer and returning the id of that customer to create a new order for that customer.
+-- WITH clause is used to create a temporary result set that can be referenced within the main query.
+WITH new_customer AS (
+  INSERT INTO customer (name)
+  VALUES ('KaraSaami')
+  RETURNING id
+)
+INSERT INTO orders (customer_id)
+SELECT id FROM new_customer;
+
+-- when run the above query if it is run wihtout error then run the commit
+COMMIT; 
+
+-- If anything wrong or we want revert that then use rollback
+ROLLBACK;
 ```
-In this example, we have two transactions. The first transaction inserts two new accounts into the `accounts` table for Alice and Bob. The second transaction performs a transfer of 100 from Alice's account to Bob's account. By using transactions, we ensure that both operations in each transaction are completed successfully, and if any operation fails, the entire transaction can be rolled back to maintain data integrity.
+In this example
+- We start a stransaction with the `BEGIN` command.
+- We use a `WITH` clause to insert a new customer into the `customer` table and return the `id` of the newly inserted customer. This allows us to create a new order for that customer in the same transaction.
+- If the transaction executes successfully without any errors, we use the `COMMIT` command to save the changes to the database.
+- If there is an error or if we want to revert the changes made in the transaction, we can use the `ROLLBACK` command to undo all operations performed in the transaction, ensuring that the database remains in a consistent state.
+
+1. ACID Properties of Transactions:
+ACID is an acronym that stands for Atomicity, Consistency, Isolation, and Durability. These properties ensure that transactions are processed reliably in a database system.
+- Atomicity: In transaction one query fails, everything failed. Ex: While tranfering money both debit and credit must succeed, if one fails nothing should change.
+- Consistency: Database moves from one valid state to another valid state. Ex: Balance should never be negative.
+- Isolation: Transactions should not interfere with each other. Ex: Two transactions trying to update the same record should not cause data corruption.
+- Durability: Once committed, data is safe even after crash. Ex: After money transfer, the changes should persist even if there is a power failure.
+
+### Locking and concurrency control:
+Locking is a mechanism used to control concurrent access to database resources. PostgreSQL uses various types of locks to ensure data integrity and consistency when multiple transactions are accessing the same data simultaneously. Ex:
+```sql
+BEGIN;
+SELECT * FROM orders
+WHERE id = 1
+FOR UPDATE;
+```
+In this example,
+- We start a transaction with the `BEGIN` command.
+- We execute a `SELECT` statement to retrieve the order with `id = 1` and use the `FOR UPDATE` clause to acquire a lock on that row. This means that other transactions will not be able to modify or delete this row until the current transaction is completed (either committed or rolled back). This helps to prevent data corruption and ensures that concurrent transactions do not interfere with each other when accessing the same data.
+
+1. Types of Locks:
+- Row-level locks: Locks a specific row in a table. Ex: `SELECT * FROM orders WHERE id = 1 FOR UPDATE;`
+- Table-level locks: locks an entire table. Ex: `LOCK TABLE orders IN EXCLUSIVE MODE;`
+- Advisory locks: Application-defined locks that can be used for custom concurrency control. Ex: `SELECT pg_advisory_lock(12345);`
+
+2. Deadlocks:
+A deadlock occurs when two or more transactions are waiting for each other to release locks, resulting in a situation where none of the transactions can proceed. PostgreSQL detects deadlocks and automatically resolves them by aborting one of the transactions involved in the deadlock. To avoid deadlocks, it is important to ensure that transactions acquire locks in a consistent order and to keep transactions as short as possible to minimize the time locks are held. Ex:
+```sql
+-- Transaction 1
+BEGIN;
+
+SELECT * FROM orders WHERE id = 1 FOR UPDATE;
+
+-- Transaction 2
+BEGIN;
+
+SELECT * FROM orders WHERE id = 2 FOR UPDATE;
+
+-- Transaction 1 tries to acquire a lock on order id 2
+SELECT * FROM orders WHERE id = 2 FOR UPDATE;
+
+-- Transaction 2 tries to acquire a lock on order id 1
+SELECT * FROM orders WHERE id = 1 FOR UPDATE;
+```
+In this example,
+- Transaction 1 starts and acquires a lock on the order with `id = 1`.
+- Transaction 2 starts and acquires a lock on the order with `id = 2`.
+- Transaction 1 then tries to acquire a lock on the order with `id = 2`, but it is already locked by Transaction 2, so Transaction 1 is now waiting for Transaction 2 to release the lock.
+- Transaction 2 then tries to acquire a lock on the order with `id = 1`, but it is already locked by Transaction 1, so Transaction 2 is now waiting for Transaction 1 to release the lock.
+This creates a deadlock situation where both transactions are waiting for each other to release locks, and neither transaction can proceed. PostgreSQL will detect this deadlock and automatically resolve it by aborting one of the transactions, allowing the other transaction to proceed. To avoid such situations, it is important to ensure that transactions acquire locks in a consistent order and to keep transactions as short as possible to minimize the time locks are held.
+
+### Isolation levels:
+Isolation levels determine how transactions interact with each other and how they see changes made by other transactions. PostgreSQL supports the following isolation levels:
+- Read Uncommitted: Allows transactions to see uncommitted changes made by other transactions. This can lead to dirty reads, non-repeatable reads, and phantom reads. Ex:
+```sql
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+```
+- Read Committed: Allows transactions to see only committed changes made by other transactions. This prevents dirty reads but can still allow non-repeatable reads and phantom reads. Ex:
+```sql
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+```
+- Repeatable Read: Ensures that if a transaction reads a row, it will see the same data for that row throughout the transaction, even if other transactions modify it. This prevents dirty reads and non-repeatable reads but can still allow phantom reads. Ex:
+```sql
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+```
+- Serializable: Provides the highest level of isolation, ensuring that transactions are executed in a way that they appear to be executed serially, even if they are executed concurrently. This prevents dirty reads, non-repeatable reads, and phantom reads. Ex:
+```sql
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+```
+In this example, we can set the isolation level for a transaction using the `SET TRANSACTION ISOLATION LEVEL` command. Each isolation level provides different guarantees about how transactions interact with each other and what data they can see. Choosing the appropriate isolation level depends on the specific requirements of your application and the trade-offs between performance and data consistency that you are willing to make.
+
+### Savepoints:
+Savepoints allow you to set a point within a transaction that you can roll back to without affecting the entire transaction. This is useful for handling errors or for implementing complex transaction logic. Ex:
+```sql
+BEGIN;
+SAVEPOINT savepoint1;
+-- Some operations
+SAVEPOINT savepoint2;
+-- Some more operations
+ROLLBACK TO savepoint1; -- This will undo the operations after savepoint1 but keep the operations before savepoint1
+COMMIT; -- This will commit the remaining operations
+```
+In this example
+- We start a transaction with the `BEGIN` command.
+- We create a savepoint named `savepoint1` using the `SAVEPOINT` command. This allows us to mark a point in the transaction that we can roll back to if needed.
+- We perform some operations after `savepoint1`.
+- We create another savepoint named `savepoint2` to mark another point in the transaction.
+- If we encounter an error or want to undo the operations performed after `savepoint1`, we can use the `ROLLBACK TO savepoint1` command. This will undo all operations performed after `savepoint1` but will keep the operations performed before `savepoint1` intact.
+- Finally, we can use the `COMMIT` command to commit the remaining operations in the transaction. This allows us to have more control over the transaction and handle errors more gracefully without having to roll back the entire transaction.
+
+## Advanced Concepts
+### Views:
+1. Normal view:
+A view is a virtual table that is based on the result of a SQL query. It allows you to encapsulate complex queries and present them as a simple table. Views can be used to simplify query writing, improve security by restricting access to specific columns or rows, and provide a level of abstraction over the underlying data. Ex:
+```sql
+CREATE VIEW active_users AS
+SELECT * FROM test_type
+WHERE is_active = true;
+WITH CHECK OPTION;
+```
+In this example, 
+- We create a view named `active_users` that selects all columns from the `test_type` table where the `is_active` column is true. This view will only show active users.
+- The `WITH CHECK OPTION` clause ensures that any insert or update operations performed on the view will only allow rows that satisfy the condition defined in the view.
+
+2. Materialized view:
+A materialized view is a view that stores the result of the query physically on disk. It can be refreshed periodically to keep the data up to date. Materialized views can improve performance for complex queries that are expensive to compute, as they allow you to retrieve precomputed results instead of executing the underlying query each time. Ex:
+```sql
+CREATE MATERIALIZED VIEW users_order_summary AS
+SELECT c.id, c.name, COUNT(o.customer_id) AS total 
+FROM customer c
+LEFT JOIN orders o ON c.id = o.customer_id
+GROUP BY c.id;
+```
+In this example
+- We create a materialized view named `users_order_summary` that summarizes the total number of orders for each customer. The view joins the `customer` and `orders` tables, groups the results by customer ID, and counts the number of orders for each customer.
+- The result of this query is stored physically on disk, and you can refresh the materialized view periodically to keep the data up to date. This can significantly improve performance when querying the summary data, as it avoids the need to execute the complex join and aggregation query each time you want to retrieve the order summary for customers.
+
+### Stored Procedures and Functions:
+1. Stored Procedures:
+A stored procedure is a set of SQL statements that can be executed on the database server. It can accept parameters, perform complex operations, and return results. Stored procedures are useful for encapsulating business logic, improving performance by reducing network round trips, and enhancing security by controlling access to the underlying data. Ex:
+```sql
+-- Stored Procedure
+CREATE PROCEDURE create_order(id INT, item TEXT)
+LANGUAGE plpgsql -- This is the procedural language for PostgreSQL
+AS $$ -- Delimiter for the procedure body
+BEGIN
+	INSERT INTO orders(customer_id, product)
+	VALUES (id, item);
+END;
+$$;
+
+CALL create_order(2, 'HandBag');
+SELECT * FROM orders;
+```
+In this example,
+- We create a stored procedure named `create_order` that takes two parameters: `id` (an integer representing the customer ID) and `item` (a text representing the product name).
+- The procedure is defined using the `plpgsql` language, which is a procedural language for PostgreSQL.
+- The body of the procedure contains an `INSERT` statement that adds a new order to the `orders` table using the provided parameters.
+- We then call the stored procedure with specific values (customer ID 2 and product 'HandBag') to create a new order, and we can query the `orders` table to see the newly inserted order. 
+
+2. Functions:
+A function is similar to a stored procedure but is designed to return a value. Functions can be used in SQL queries, allowing you to perform calculations or transformations on data directly within the query. Ex:
+```sql
+CREATE FUNCTION get_orders_by_user(u_id INT)
+RETURNS INT -- specify data type
+LANGUAGE plpgsql
+AS $$
+DECLARE total INT; -- variable declaration
+BEGIN 
+	SELECT COUNT(*) INTO total FROM orders
+	WHERE customer_id = u_id;
+
+	RETURN total;
+END;
+$$;
+
+SELECT get_orders_by_user(2);
+```
+In this example,
+- We create a function named `get_orders_by_user` that takes a single parameter `u_id` (an integer representing the user ID) and returns an integer value.
+- The function is defined using the `plpgsql` language, and it declares a variable `total` to store the count of orders for the specified user.
+- The function executes a `SELECT` statement to count the number of orders for the given user ID and stores the result in the `total` variable.
+- Finally, the function returns the total count of orders for the specified user ID. We can call the function with a specific user ID (e.g., 2) to retrieve the total number of orders for that user.
