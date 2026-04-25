@@ -859,4 +859,60 @@ FROM products
 WHERE attributes->'specs'->>'ram' = '4GB';
 ```
 
-## 
+## Scaling PostgreSQL
+### Read Replicas:
+Read replicas are copies of the primary database that can be used to offload read operations and improve read performance. In PostgreSQL, you can set up streaming replication to create read replicas. This allows you to distribute read-traffic across multiple replicas, reducing the load on the primary database and improving overall performance. Ex: 
+```sql
+-- On primary server
+SELECT pg_start_backup('replica_backup');
+
+-- Copy data directory to replica server
+-- On replica server
+pg_basebackup -h primary_host -D /path/to/replica/data -U replication_user -P --wal-method=stream
+
+-- On primary server
+SELECT pg_stop_backup();
+```
+In this example,
+- We start a backup on the primary server using the `pg_start_backup` function, which prepares the database for replication.
+- We then use the `pg_basebackup` command on the replica server to copy the data directory from the primary server. This command connects to the primary server, authenticates using a replication user, and streams the data to the replica server.
+- Finally, we stop the backup on the primary server using the `pg_stop_backup` function, which signals that the backup process is complete and allows the replica to start replicating changes from the primary server. This setup allows the replica server to serve read requests while the primary server handles write operations, improving overall performance and scalability of the PostgreSQL database.
+
+### Connection Pooling:
+Connection pooling is a technique used to manage database connections efficiently by reusing existing connections instead of creating new ones for each request. This can significantly improve performance and reduce the overhead associated with establishing new connections. In PostgreSQL, you can use connection pooling tools such as PgBouncer or PgPool-II to implement connection pooling. EX:
+```bash
+# Install PgBouncer
+sudo apt-get install pgbouncer
+# Configure PgBouncer
+[databases]
+mydb = host=localhost port=5432 dbname=mydb
+[pgbouncer]
+listen_addr = *
+listen_port = 6432
+auth_type = md5
+auth_file = /etc/pgbouncer/userlist.txt
+# Start PgBouncer
+sudo service pgbouncer start
+```
+In this example,
+- We install PgBouncer, a popular connection pooling tool for PostgreSQL.
+- We configure PgBouncer by specifying the database connection details in the `[databases]` section and setting up the listening address, port, authentication type, and authentication file in the `[pgbouncer]` section.
+- Finally, we start the PgBouncer service, which will now manage database connections and allow applications to connect to the PostgreSQL database through the connection pool, improving performance and scalability by reusing existing connections instead of creating new ones for each request.
+
+### Partitioning:
+Partitioning is a technique used to divide a large table into smaller, more manageable pieces called partitions. This can improve query performance and make it easier to manage large datasets. In PostgreSQL, you can use table partitioning to create partitions based on a specified column or range of values. Ex:
+```sql
+CREATE TABLE orders (
+  id SERIAL PRIMARY KEY,
+  customer_id INT,
+  order_date DATE
+) PARTITION BY RANGE (order_date);
+
+CREATE TABLE orders_2021 PARTITION OF orders
+FOR VALUES FROM ('2021-01-01') TO ('2022-01-01');
+CREATE TABLE orders_2022 PARTITION OF orders
+FOR VALUES FROM ('2022-01-01') TO ('2023-01-01');
+```
+In this example,
+- We create a table named `orders` with three columns: `id`, `customer_id`, and `order_date`. We specify that the table should be partitioned by range based on the `order_date` column.
+- We then create two partitions of the `orders` table: `orders_2021` for orders with an `order_date` in the year 2021, and `orders_2022` for orders with an `order_date` in the year 2022. This allows us to manage and query large datasets more efficiently by dividing the data into smaller partitions based on the order date, improving query performance and making it easier to maintain the data.
