@@ -794,3 +794,69 @@ In this example,
 - The function is defined using the `plpgsql` language, and it declares a variable `total` to store the count of orders for the specified user.
 - The function executes a `SELECT` statement to count the number of orders for the given user ID and stores the result in the `total` variable.
 - Finally, the function returns the total count of orders for the specified user ID. We can call the function with a specific user ID (e.g., 2) to retrieve the total number of orders for that user.
+
+### JSON and JSONB:
+PostgreSQL supports storing JSON (JavaScript Object Notation) data in a column using the `json` and `jsonb` data types. The `json` data type stores JSON data as text, while the `jsonb` data type stores JSON data in a binary format that allows for faster querying and indexing. Ex:
+```sql
+CREATE TABLE products (
+  id SERIAL PRIMARY KEY,
+  name TEXT,
+  attributes JSONB
+);
+```
+In this example, we create a table named `products` with three columns: `id` (a serial primary key), `name` (a text column for the product name), and `attributes` (a JSONB column for storing product attributes in JSON format). The `jsonb` data type allows us to efficiently store and query JSON data, making it easier to work with complex data structures within our PostgreSQL database.
+- Inserting JSON data:
+```sql
+INSERT INTO products (name, attributes)
+VALUES ('Laptop', '{"brand": "Dell", "specs": {"ram": "16GB", "storage": "512GB"}}');
+```
+- Querying JSON data:
+```sql
+SELECT name, attributes->>'brand' AS brand
+FROM products
+WHERE attributes->'specs'->>'ram' = '16GB';
+```
+In this example, we insert a new product into the `products` table with a JSONB `attributes` column that contains information about the brand and specifications of the laptop. We then query the `products` table to retrieve the name and brand of products that have 16GB of RAM by using the JSON operators to access the nested JSON data in the `attributes` column. The `->` operator is used to access JSON objects, while the `->>` operator is used to extract values as text. This allows us to efficiently query and work with JSON data stored in the `jsonb` column of our PostgreSQL database.
+- Indexing JSONB data:
+```sql
+CREATE INDEX idx_attributes ON products USING GIN (attributes);
+```
+In this example, we create a GIN (Generalized Inverted Index) index on the `attributes` column of the `products` table. This index allows for efficient querying of JSONB data, especially when using operators to access nested JSON fields. By indexing the `attributes` column, we can improve the performance of queries that filter based on specific attributes within the JSON data.
+Why GIN index for JSONB?
+GIN indexes are designed for indexing composite data types, such as JSONB, which can contain multiple key-value pairs and nested structures. GIN indexes allow for efficient querying of JSONB data by indexing the individual keys and values within the JSON structure, enabling fast lookups and filtering based on specific attributes. This makes GIN indexes particularly well-suited for JSONB data, as they can significantly improve query performance when working with complex JSON structures.
+- Updating JSONB data:
+```sql
+UPDATE products
+SET attributes = jsonb_set(attributes, '{specs,ram}', '"32GB"')
+WHERE name = 'Laptop';
+```
+- Deleting JSONB data:
+```sql
+DELETE FROM products
+WHERE attributes->>'brand' = 'Dell';
+```
+- Add new Field to JSONB data:
+```sql
+UPDATE products
+SET attributes = jsonb_set(attributes, '{specs,processor}', '"Intel i7")
+WHERE name = 'Laptop';
+```
+- Remove Field from JSONB data:
+```sql
+UPDATE products
+SET attributes = attributes - 'specs'
+WHERE name = 'Laptop';
+```
+- Nested JSONB data:
+```sql
+INSERT INTO products (name, attributes)
+VALUES ('Smartphone', '{"brand": "Apple", "specs": {"ram": "4GB", "storage": "128GB", "camera": {"front": "12MP", "rear": "12MP"}}}');
+```
+- Querying nested JSONB data:
+```sql
+SELECT name, attributes->'specs'->'camera' AS camera_specs
+FROM products
+WHERE attributes->'specs'->>'ram' = '4GB';
+```
+
+## 
